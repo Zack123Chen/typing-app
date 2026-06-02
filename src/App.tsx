@@ -10,7 +10,7 @@ const KEYBOARD = [
   ["z", "x", "c", "v", "b", "n", "m"],
 ];
 
-const FINGER = {
+const FINGER: Record<string, string> = {
   q: "#c25e4f", a: "#c25e4f", z: "#c25e4f",
   w: "#c8884a", s: "#c8884a", x: "#c8884a",
   e: "#b89a3e", d: "#b89a3e", c: "#b89a3e",
