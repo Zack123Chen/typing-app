@@ -4,6 +4,21 @@ import * as Tone from "tone";
 
 const WORDS = "the be to of and a in that have it for not on with he as you do at this but his by from they we say her she or an will my one all would there their what so up out if about who get which go me when make can like time no just him know take people into year your good some could them see other than then now look only come its over think also back after use two how our work first well way even new want because any these give day most us is are was were good great small large long short high low old young right left big".split(" ");
 
+const QUOTES: readonly string[] = [
+  "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle.",
+  "Stay hungry. Stay foolish. Your time is limited, so don't waste it living someone else's life.",
+  "Talk is cheap. Show me the code. Given enough eyeballs, all bugs are shallow.",
+  "Premature optimization is the root of all evil. We should forget about small efficiencies most of the time.",
+  "The best way to predict the future is to invent it. The future is already here, just not very evenly distributed.",
+  "Simplicity is the ultimate sophistication. Make everything as simple as possible, but not simpler.",
+  "It always seems impossible until it's done. The journey of a thousand miles begins with a single step.",
+  "First, solve the problem. Then, write the code. Programs must be written for people to read.",
+  "There are only two hard things in computer science: cache invalidation and naming things.",
+  "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.",
+] as const;
+
+type Mode = "words" | "quotes";
+
 const KEYBOARD = [
   ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
   ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
@@ -35,20 +50,29 @@ function calcTime(text: string): number {
   return Math.max(30, Math.min(300, Math.ceil(text.length / CPM * 60)));
 }
 
-function genText() {
+function genWords(): string {
   const out: string[] = [];
   for (let i = 0; i < 130; i++) out.push(WORDS[Math.floor(Math.random() * WORDS.length)]);
   return out.join(" ");
 }
+function genQuotes(): string {
+  // 拼 2–3 段名言，长度接近随机词模式
+  const picks = [...QUOTES].sort(() => Math.random() - 0.5).slice(0, 3);
+  return picks.join(" ");
+}
+function genText(mode: Mode = "words"): string {
+  return mode === "quotes" ? genQuotes() : genWords();
+}
 const clean = (t: string) => t.replace(/\s+/g, " ").trim().slice(0, MAX_LEN);
 
 export default function TypingApp() {
+  const [mode, setMode] = useState<Mode>("words");
   const [source, setSource] = useState<string | null>(null);
-  const [target, setTarget] = useState(genText);
+  const [target, setTarget] = useState(() => genText("words"));
   const [typed, setTyped] = useState("");
   const [status, setStatus] = useState("waiting");
-  const [totalTime, setTotalTime] = useState(() => calcTime(genText()));
-  const [timeLeft, setTimeLeft] = useState(() => calcTime(genText()));
+  const [totalTime, setTotalTime] = useState(() => calcTime(genText("words")));
+  const [timeLeft, setTimeLeft] = useState(() => calcTime(genText("words")));
   const [wpmHistory, setWpmHistory] = useState<{ t: number; wpm: number }[]>([]);
   const [showKeyboard, setShowKeyboard] = useState(true);
   const [showCustom, setShowCustom] = useState(false);
@@ -103,15 +127,16 @@ export default function TypingApp() {
     try { a.bell && a.bell.triggerAttackRelease("C6", "16n"); } catch (e) {}
   }, []);
 
-  const restart = useCallback((src?: string | null) => {
+  const restart = useCallback((src?: string | null, newMode?: Mode) => {
     const s = src !== undefined ? src : source;
-    const newTarget = s ? s : genText();
+    const m = newMode ?? mode;
+    const newTarget = s ? s : genText(m);
     const t = calcTime(newTarget);
     setTarget(newTarget);
     setTotalTime(t);
     setTyped(""); setTimeLeft(t); setWpmHistory([]);
     setOffset(0); prevOffsetRef.current = 0; setStatus("waiting");
-  }, [source]);
+  }, [source, mode]);
 
   // 键盘输入
   useEffect(() => {
@@ -311,8 +336,19 @@ export default function TypingApp() {
             {/* 控制栏 */}
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3 text-sm" style={{ color: C.paper }}>
               <Btn onClick={() => restart()}>重开 (Tab)</Btn>
+              {!source && (
+                <Btn
+                  onClick={() => {
+                    const next: Mode = mode === "words" ? "quotes" : "words";
+                    setMode(next);
+                    restart(undefined, next);
+                  }}
+                >
+                  {mode === "words" ? "📜 切到名言" : "🎲 切到随机词"}
+                </Btn>
+              )}
               <Btn onClick={() => { setDraft(source || ""); setFileName(""); setShowCustom(true); }}>✎ 上传 / 粘贴文章</Btn>
-              {source && <Btn onClick={() => { setSource(null); restart(null); }}>↺ 随机单词</Btn>}
+              {source && <Btn onClick={() => { setSource(null); restart(null); }}>↺ 随机文本</Btn>}
               <label className="flex items-center gap-2 cursor-pointer" style={{ color: C.faded }}>
                 <input type="checkbox" checked={showKeyboard} onChange={(e) => setShowKeyboard(e.target.checked)} /> 键盘
               </label>
